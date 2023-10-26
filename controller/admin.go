@@ -6,6 +6,7 @@ import (
 	"rentcamp/helper"
 	"rentcamp/model"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
@@ -73,4 +74,11 @@ func (uc *AdminController) Login() echo.HandlerFunc {
 
 		return c.JSON(http.StatusOK, helper.FormatResponse("login success", jwtToken))
 	}
+}
+
+func SomeSecureHandler(c echo.Context) error {
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	username := claims["username"].(string)
+	return c.String(http.StatusOK, "Welcome, "+username+"!")
 }

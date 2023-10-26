@@ -19,8 +19,10 @@ func main() {
 	model.Migrate(db)
 
 	adminModel := model.NewUsersModel(db)
+	ProductModel := model.NewProductsModel(db)
 
 	adminController := controller.NewAdminControlInterface(adminModel)
+	ProductController := controller.NewProductControllerInterface(ProductModel)
 
 	e.Pre(middleware.RemoveTrailingSlash())
 
@@ -31,5 +33,7 @@ func main() {
 		}))
 
 	route.RouteAdmin(e, adminController, *config)
+	route.RouteProduct(e, ProductController, *config)
+
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", config.ServerPort)).Error())
 }

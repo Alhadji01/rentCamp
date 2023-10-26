@@ -1,14 +1,20 @@
 package model
 
 import (
+	"time"
+
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
 
 type Admin struct {
-	Id       int    `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
-	Username string `gorm:"type:varchar(25);not null" json:"username" form:"username"`
-	Password string `gorm:"type:varchar(25);not null" json:"password" form:"password"`
+	Id        int    `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
+	Username  string `gorm:"type:varchar(25);not null" json:"username" form:"username"`
+	Password  string `gorm:"type:varchar(25);not null" json:"password" form:"password"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
+	Products  []Product      `json:"products"`
 }
 
 type Login struct {
