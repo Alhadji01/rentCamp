@@ -31,7 +31,7 @@ type AdminsModel struct {
 	db *gorm.DB
 }
 
-func NewUsersModel(db *gorm.DB) AdminModelInterface {
+func NewAdminsModel(db *gorm.DB) AdminModelInterface {
 	return &AdminsModel{
 		db: db,
 	}

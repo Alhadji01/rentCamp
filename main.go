@@ -18,7 +18,7 @@ func main() {
 	db := model.InitModel(*config)
 	model.Migrate(db)
 
-	adminModel := model.NewUsersModel(db)
+	adminModel := model.NewAdminsModel(db)
 	ProductModel := model.NewProductsModel(db)
 
 	adminController := controller.NewAdminControlInterface(adminModel)

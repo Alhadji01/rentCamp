@@ -47,13 +47,32 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 
 func (cpc *ProductController) GetAllProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var res = cpc.model.SelectAll()
+		page := c.QueryParam("page")
+		limit := c.QueryParam("limit")
+		search := c.QueryParam("search")
 
-		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get all egory product, ", nil))
+		pageNumber, err := strconv.Atoi(page)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid page parameter", nil))
 		}
 
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success get all egory product, ", res))
+		limitNumber, err := strconv.Atoi(limit)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid limit parameter", nil))
+		}
+
+		res, totalCount, err := cpc.model.SelectWithPagination(pageNumber, limitNumber, search)
+
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching products", nil))
+		}
+
+		response := map[string]interface{}{
+			"products":   res,
+			"total_data": totalCount,
+		}
+
+		return c.JSON(http.StatusOK, helper.FormatResponse("Success fetching products", response))
 	}
 }
 

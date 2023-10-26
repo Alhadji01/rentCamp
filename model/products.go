@@ -26,6 +26,7 @@ type ProductModelInterface interface {
 	SelectById(ProductId int) *Product
 	Update(updatedData Product) *Product
 	Delete(ProductId int) bool
+	SelectWithPagination(page int, limit int, search string) ([]Product, int, error)
 }
 
 type ProductsModel struct {
@@ -103,4 +104,29 @@ func (cpm *ProductsModel) Delete(ProductId int) bool {
 	}
 
 	return true
+}
+
+func (pm *ProductsModel) SelectWithPagination(page int, limit int, search string) ([]Product, int, error) {
+	var products []Product
+	var totalCount int64 // Menggunakan int64
+
+	// Hitung total data yang sesuai dengan pencarian
+	if err := pm.db.Model(&Product{}).
+		Where("name LIKE ?", "%"+search+"%").
+		Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Konversi totalCount menjadi int
+	totalCountInt := int(totalCount)
+
+	// Query data dengan pagination
+	if err := pm.db.Where("name LIKE ?", "%"+search+"%").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&products).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return products, totalCountInt, nil
 }
