@@ -10,18 +10,19 @@ import (
 type Product struct {
 	Id          int            `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
 	Name        string         `gorm:"type:varchar(100);not null" json:"name" form:"name"`
-	Image       string         `gorm:"type:text"`
 	Description string         `gorm:"type:text;not null" json:"description" form:"description"`
 	Price       int            `gorm:"type:smallint;not null" json:"unit_price" form:"unit_price"`
 	Stock       int            `gorm:"type:smallint;not null" json:"stock" form:"stock"`
+	Image       string         `gorm:"type:text"`
 	CreatedAt   time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"created_at" form:"created_at"`
 	UpdatedAt   time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"updated_at" form:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at" form:"deleted_at"`
 	AdminId     int            `json:"admin_id" form:"admin_id"`
+	Carts       []Cart         `json:"cart"`
 }
 
 type ProductModelInterface interface {
-	Insert(newProduct Product) *Product
+	InsertProduct(newProduct Product) *Product
 	SelectAll() []Product
 	SelectById(ProductId int) *Product
 	Update(updatedData Product) *Product
@@ -39,7 +40,7 @@ func NewProductsModel(db *gorm.DB) ProductModelInterface {
 	}
 }
 
-func (cpm *ProductsModel) Insert(newProduct Product) *Product {
+func (cpm *ProductsModel) InsertProduct(newProduct Product) *Product {
 	if err := cpm.db.Create(&newProduct).Error; err != nil {
 		logrus.Error("Model : Insert data error, ", err.Error())
 		return nil
@@ -108,19 +109,15 @@ func (cpm *ProductsModel) Delete(ProductId int) bool {
 
 func (pm *ProductsModel) SelectWithPagination(page int, limit int, search string) ([]Product, int, error) {
 	var products []Product
-	var totalCount int64 // Menggunakan int64
+	var totalCount int64
 
-	// Hitung total data yang sesuai dengan pencarian
 	if err := pm.db.Model(&Product{}).
 		Where("name LIKE ?", "%"+search+"%").
 		Count(&totalCount).Error; err != nil {
 		return nil, 0, err
 	}
-
-	// Konversi totalCount menjadi int
 	totalCountInt := int(totalCount)
 
-	// Query data dengan pagination
 	if err := pm.db.Where("name LIKE ?", "%"+search+"%").
 		Offset((page - 1) * limit).
 		Limit(limit).

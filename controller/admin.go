@@ -60,7 +60,7 @@ func (uc *AdminController) Login() echo.HandlerFunc {
 			return c.JSON(http.StatusNotFound, helper.FormatResponse("Data not found", nil))
 		}
 
-		var jwtToken = helper.GenerateJWT(uc.config.Secret, uc.config.RefreshSecret, res.Id, res.Username)
+		var jwtToken = helper.GenerateJWT(uc.config.Secret, uc.config.RefreshSecret, res.Id, res.Username, res.Role)
 
 		if jwtToken == nil {
 			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happend", nil))
@@ -68,7 +68,7 @@ func (uc *AdminController) Login() echo.HandlerFunc {
 
 		var info = map[string]any{}
 		info["username"] = res.Username
-		info["role"] = "admin"
+		info["role"] = res.Role
 
 		jwtToken["info"] = info
 

@@ -9,15 +9,18 @@ import (
 )
 
 type Config struct {
-	ServerPort    int
-	DBPort        int
-	DBHost        string
-	DBUser        string
-	DBPassword    string
-	DBName        string
-	Secret        string
-	RefreshSecret string
-	OpenAIKey     string
+	ServerPort      int
+	DBPort          int
+	DBHost          string
+	DBUser          string
+	DBPassword      string
+	DBName          string
+	Secret          string
+	RefreshSecret   string
+	CDN_Cloud_Name  string
+	CDN_API_Key     string
+	CDN_API_Secret  string
+	CDN_Folder_Name string
 }
 
 func loadConfig() *Config {
@@ -70,8 +73,17 @@ func loadConfig() *Config {
 	if val, found := os.LookupEnv("REFSECRET"); found {
 		res.RefreshSecret = val
 	}
-	if val, found := os.LookupEnv("OPENAI_API_KEY"); found {
-		res.OpenAIKey = val
+	if val, found := os.LookupEnv("CDN_Cloud_Name"); found {
+		res.CDN_Cloud_Name = val
+	}
+	if val, found := os.LookupEnv("CDN_API_Key"); found {
+		res.CDN_API_Key = val
+	}
+	if val, found := os.LookupEnv("CDN_API_Secret"); found {
+		res.CDN_API_Secret = val
+	}
+	if val, found := os.LookupEnv("CDN_Folder_Name"); found {
+		res.CDN_Folder_Name = val
 	}
 
 	return res

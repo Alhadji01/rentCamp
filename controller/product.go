@@ -16,6 +16,7 @@ type ProductControllerInterface interface {
 	GetProductById() echo.HandlerFunc
 	UpdateProduct() echo.HandlerFunc
 	DeleteProduct() echo.HandlerFunc
+	SearchProduct() echo.HandlerFunc
 }
 
 type ProductController struct {
@@ -33,23 +34,35 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var input = model.Product{}
 		if err := c.Bind(&input); err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid egory product input", nil))
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid category product input", nil))
 		}
 
-		var res = cpc.model.Insert(input)
+		var res = cpc.model.InsertProduct(input)
 		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happend", nil))
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happened", nil))
 		}
 
-		return c.JSON(http.StatusCreated, helper.FormatResponse("success create egory product", res))
+		return c.JSON(http.StatusCreated, helper.FormatResponse("success create category product", res))
 	}
 }
 
 func (cpc *ProductController) GetAllProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		var res = cpc.model.SelectAll()
+
+		if res == nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get all users, ", nil))
+		}
+
+		return c.JSON(http.StatusOK, helper.FormatResponse("Success get all users, ", res))
+	}
+}
+
+func (cpc *ProductController) SearchProduct() echo.HandlerFunc {
+	return func(c echo.Context) error {
 		page := c.QueryParam("page")
 		limit := c.QueryParam("limit")
-		search := c.QueryParam("search")
+		search := c.QueryParam("name")
 
 		pageNumber, err := strconv.Atoi(page)
 		if err != nil {

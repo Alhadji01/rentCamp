@@ -1,9 +1,11 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -11,7 +13,7 @@ type User struct {
 	Id        int            `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
 	Name      string         `gorm:"type:varchar(100);not null" json:"name" form:"name"`
 	Username  string         `gorm:"type:varchar(25);not null" json:"username" form:"username"`
-	Password  string         `gorm:"type:varchar(25);not null" json:"password" form:"password"`
+	Password  string         `gorm:"type:varchar(255);not null" json:"password" form:"password"`
 	Email     string         `gorm:"type:varchar(50);not null" json:"email" form:"email"`
 	Phone     string         `gorm:"type:varchar(15);not null" json:"phone" form:"phone"`
 	Address   string         `gorm:"type:varchar(255);not null" json:"address" form:"address"`
@@ -19,16 +21,23 @@ type User struct {
 	CreatedAt time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"created_at" form:"created_at"`
 	UpdatedAt time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"updated_at" form:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at" form:"deleted_at"`
+	Carts     []Cart         `json:"cart"`
+}
+
+type LoginUser struct {
+	Username string `json:"username" form:"username"`
+	Password string `json:"password" form:"password"`
 }
 
 // Declaration Contract
 type UserModelInterface interface {
 	Login(username string, password string) *User
-	Insert(newItem User) *User
+	InsertUser(newItem User) *User
 	SelectAll() []User
 	SelectById(userId int) *User
-	Update(updatedData User) *User
+	Update(updatedData User) (*User, error)
 	Delete(userId int) bool
+	SearchUsers(page int, limit int, keyword string) ([]User, int, error)
 }
 
 // Interaction with db
@@ -57,7 +66,7 @@ func (um *UsersModel) Login(username string, password string) *User {
 	return &data
 }
 
-func (um *UsersModel) Insert(newUser User) *User {
+func (um *UsersModel) InsertUser(newUser User) *User {
 	if err := um.db.Create(&newUser).Error; err != nil {
 		logrus.Error("Model : Insert data error, ", err.Error())
 		return nil
@@ -86,7 +95,28 @@ func (um *UsersModel) SelectById(userId int) *User {
 	return &data
 }
 
-func (um *UsersModel) Update(updatedData User) *User {
+func (um *UsersModel) SearchUsers(page int, limit int, search string) ([]User, int, error) {
+	var users []User
+	var totalCount int64
+
+	if err := um.db.Model(&User{}).
+		Where("name LIKE ?", "%"+search+"%").
+		Count(&totalCount).Error; err != nil {
+		return nil, 0, err
+	}
+	totalCountInt := int(totalCount)
+
+	if err := um.db.Where("name LIKE ?", "%"+search+"%").
+		Offset((page - 1) * limit).
+		Limit(limit).
+		Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return users, totalCountInt, nil
+}
+
+func (um *UsersModel) Update(updatedData User) (*User, error) {
 	var data map[string]interface{} = make(map[string]interface{})
 
 	if updatedData.Name != "" {
@@ -96,7 +126,11 @@ func (um *UsersModel) Update(updatedData User) *User {
 		data["username"] = updatedData.Username
 	}
 	if updatedData.Password != "" {
-		data["password"] = updatedData.Password
+		hashpwd, err := bcrypt.GenerateFromPassword([]byte(updatedData.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, errors.New("Gagal mengenkripsi kata sandi: " + err.Error())
+		}
+		data["password"] = string(hashpwd)
 	}
 	if updatedData.Email != "" {
 		data["email"] = updatedData.Email
@@ -113,22 +147,19 @@ func (um *UsersModel) Update(updatedData User) *User {
 
 	var qry = um.db.Table("users").Where("id = ?", updatedData.Id).Updates(data)
 	if err := qry.Error; err != nil {
-		logrus.Error("Model : update error, ", err.Error())
-		return nil
+		return nil, errors.New("Gagal memperbarui data pengguna: " + err.Error())
 	}
 
 	if dataCount := qry.RowsAffected; dataCount < 1 {
-		logrus.Error("Model : Update error, ", "no data effected")
-		return nil
+		return nil, errors.New("Gagal memperbarui data pengguna: tidak ada data yang terpengaruh")
 	}
 
 	var updatedUser = User{}
 	if err := um.db.Where("id = ?", updatedData.Id).First(&updatedUser).Error; err != nil {
-		logrus.Error("Model : Error get updated data, ", err.Error())
-		return nil
+		return nil, errors.New("Gagal mengambil data pengguna yang diperbarui: " + err.Error())
 	}
 
-	return &updatedUser
+	return &updatedUser, nil
 }
 
 func (um *UsersModel) Delete(userId int) bool {

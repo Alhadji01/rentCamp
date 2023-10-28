@@ -10,11 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func generateToken(signKey string, id int, username string, isAdmin bool) string {
+func generateToken(signKey string, id int, username string, role string) string {
 	var claims = jwt.MapClaims{}
 	claims["id"] = id
 	claims["username"] = username
-	claims["role"] = isAdmin
+	claims["role"] = role
 	claims["iat"] = time.Now().Unix()
 	claims["exp"] = time.Now().Add(time.Minute * 10).Unix()
 
@@ -45,10 +45,10 @@ func generateRefreshToken(signKey string, accessToken string) string {
 	return refreshToken
 }
 
-func GenerateJWT(signKey string, refreshKey string, userId int, username string) map[string]any {
+func GenerateJWT(signKey string, refreshKey string, userId int, username string, role string) map[string]any {
 	var res = map[string]any{}
 
-	var accessToken = generateToken(signKey, userId, username, true)
+	var accessToken = generateToken(signKey, userId, username, role)
 	if accessToken == "" {
 		logrus.Error("JWT : Cannot generate token", nil)
 		return nil

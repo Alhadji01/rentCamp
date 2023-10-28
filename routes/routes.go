@@ -17,12 +17,23 @@ func RouteProduct(e *echo.Echo, cpc controller.ProductControllerInterface, cfg c
 	var product = e.Group("/admins")
 	product.Use(helper.Middleware())
 	product.POST("/products", cpc.CreateProduct())
-	product.GET("/products", cpc.GetAllProduct())
+	product.PUT("/:id", cpc.UpdateProduct())
 	product.PUT("/products/:id", cpc.UpdateProduct())
 	product.DELETE("/products/:id", cpc.DeleteProduct())
 
 	var admin = e.Group("/products")
-	admin.PUT("/:id", cpc.UpdateProduct())
 	admin.GET("", cpc.GetAllProduct())
+	admin.GET("/search", cpc.SearchProduct())
 	admin.GET("/:id", cpc.GetProductById())
+}
+
+func RouteUser(e *echo.Echo, uc controller.UserControllerInterface, cfg config.Config) {
+	var user = e.Group("/users")
+	user.POST("/login", uc.Login())
+	user.POST("", uc.CreateUser())
+	user.GET("", uc.GetAllUsers())
+	user.GET("/:id", uc.GetUserById())
+	user.PUT("/:id", uc.UpdateUser())
+	user.DELETE("/:id", uc.DeleteUser())
+	user.GET("/search", uc.SearchUsers())
 }

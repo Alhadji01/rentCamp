@@ -11,6 +11,7 @@ type Admin struct {
 	Id        int    `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
 	Username  string `gorm:"type:varchar(25);not null" json:"username" form:"username"`
 	Password  string `gorm:"type:varchar(25);not null" json:"password" form:"password"`
+	Role      string `gorm:"type:ENUM('admin');not null" json:"role" form:"role"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
