@@ -1,12 +1,15 @@
 package controller
 
 import (
+	"context"
 	"net/http"
 	"rentcamp/config"
 	"rentcamp/helper"
 	"rentcamp/model"
 	"strconv"
 
+	"github.com/cloudinary/cloudinary-go"
+	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/labstack/echo/v4"
 )
 
@@ -24,9 +27,10 @@ type ProductController struct {
 	model  model.ProductModelInterface
 }
 
-func NewProductControllerInterface(m model.ProductModelInterface) ProductControllerInterface {
+func NewProductControllerInterface(m model.ProductModelInterface, cfg config.Config) ProductControllerInterface {
 	return &ProductController{
-		model: m,
+		model:  m,
+		config: cfg,
 	}
 }
 
@@ -34,15 +38,42 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var input = model.Product{}
 		if err := c.Bind(&input); err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid category product input", nil))
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid category product input", nil))
+		}
+		image, err := c.FormFile("image")
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Image upload is required", nil))
+		}
+		cld, err := cloudinary.NewFromParams(
+			cpc.config.CDN_Cloud_Name,
+			cpc.config.CDN_API_Key,
+			cpc.config.CDN_API_Secret,
+		)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to initialize Cloudinary", nil))
+		}
+		uploadParams := uploader.UploadParams{
+			Folder: cpc.config.CDN_Folder_Name,
 		}
 
-		var res = cpc.model.InsertProduct(input)
-		if res == nil {
+		fileReader, err := image.Open()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to read image file", nil))
+		}
+		defer fileReader.Close()
+
+		result, err := cld.Upload.Upload(context.TODO(), fileReader, uploadParams)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to upload image to Cloudinary", nil))
+		}
+		input.Image = result.SecureURL
+
+		createdProduct := cpc.model.InsertProduct(input)
+		if createdProduct == nil {
 			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happened", nil))
 		}
 
-		return c.JSON(http.StatusCreated, helper.FormatResponse("success create category product", res))
+		return c.JSON(http.StatusCreated, helper.FormatResponse("Success create category product", createdProduct))
 	}
 }
 
@@ -114,17 +145,48 @@ func (cpc *ProductController) UpdateProduct() echo.HandlerFunc {
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid id", nil))
 		}
-
 		var input = model.Product{}
 		if err := c.Bind(&input); err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid egory product input", nil))
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid category product input", nil))
+		}
+		image, err := c.FormFile("image")
+		if err != nil {
+			existingProduct := cpc.model.SelectById(cnv)
+			if existingProduct == nil {
+				return c.JSON(http.StatusNotFound, helper.FormatResponse("Product not found", nil))
+			}
+			input.Image = existingProduct.Image
+		} else {
+			cld, err := cloudinary.NewFromParams(
+				cpc.config.CDN_Cloud_Name,
+				cpc.config.CDN_API_Key,
+				cpc.config.CDN_API_Secret,
+			)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to initialize Cloudinary", nil))
+			}
+			uploadParams := uploader.UploadParams{
+				Folder: cpc.config.CDN_Folder_Name,
+			}
+
+			fileReader, err := image.Open()
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to read image file", nil))
+			}
+			defer fileReader.Close()
+
+			result, err := cld.Upload.Upload(context.TODO(), fileReader, uploadParams)
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to upload image to Cloudinary", nil))
+			}
+			input.Image = result.SecureURL
 		}
 
 		input.Id = cnv
 
 		var res = cpc.model.Update(input)
 		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("cannot process data, something happend", nil))
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("cannot process data, something happened", nil))
 		}
 
 		return c.JSON(http.StatusOK, helper.FormatResponse("Success update data", res))

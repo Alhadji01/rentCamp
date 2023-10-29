@@ -24,7 +24,7 @@ func main() {
 	cartModel := model.NewCartModel(db)
 
 	adminController := controller.NewAdminControlInterface(adminModel)
-	ProductController := controller.NewProductControllerInterface(ProductModel)
+	ProductController := controller.NewProductControllerInterface(ProductModel, *config)
 	userController := controller.NewUserControlInterface(userModel)
 	cartController := controller.NewCartControllerInterface(cartModel)
 

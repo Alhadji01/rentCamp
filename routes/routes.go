@@ -28,13 +28,16 @@ func RouteProduct(e *echo.Echo, cpc controller.ProductControllerInterface, cfg c
 
 func RouteUser(e *echo.Echo, uc controller.UserControllerInterface, cfg config.Config) {
 	var user = e.Group("/customer")
-	user.POST("/login", uc.Login())
-	user.POST("", uc.CreateUser())
-	user.GET("", uc.GetAllUsers())
+	user.Use(helper.Middleware())
 	user.GET("/:id", uc.GetUserById())
 	user.PUT("/:id", uc.UpdateUser())
 	user.DELETE("/:id", uc.DeleteUser())
-	user.GET("/search", uc.SearchUsers())
+
+	var customer = e.Group("/customer")
+	customer.POST("/login", uc.Login())
+	customer.GET("", uc.GetAllUsers())
+	customer.GET("/search", uc.SearchUsers())
+	customer.POST("", uc.CreateUser())
 }
 
 func RouteCart(e *echo.Echo, cc controller.CartControllerInterface, cfg config.Config) {
@@ -46,4 +49,8 @@ func RouteCart(e *echo.Echo, cc controller.CartControllerInterface, cfg config.C
 	cart.GET("/:cart_id/items", cc.GetItemsInCart())
 	cart.DELETE("/:cart_id/items", cc.RemoveAllItemsFromCart())
 	cart.GET("/:cart_id/total", cc.GetTotalCartPrice())
+}
+func RoutePayment(e *echo.Echo, pc controller.PaymentControllerInterface, cfg config.Config) {
+	var payment = e.Group("/payment")
+	payment.POST("/create-invoice", pc.CreatePayment())
 }
