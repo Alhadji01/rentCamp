@@ -13,12 +13,11 @@ type Product struct {
 	Description string         `gorm:"type:text;not null" json:"description" form:"description"`
 	Price       int            `gorm:"type:smallint;not null" json:"unit_price" form:"unit_price"`
 	Stock       int            `gorm:"type:smallint;not null" json:"stock" form:"stock"`
-	Image       string         `gorm:"type:text"`
+	Image       string         `gorm:"type:text" json:"image"`
 	CreatedAt   time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"created_at" form:"created_at"`
 	UpdatedAt   time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"updated_at" form:"updated_at"`
 	DeletedAt   gorm.DeletedAt `gorm:"index" json:"deleted_at" form:"deleted_at"`
 	AdminId     int            `json:"admin_id" form:"admin_id"`
-	Carts       []Cart         `json:"cart"`
 }
 
 type ProductModelInterface interface {
@@ -70,7 +69,27 @@ func (cpm *ProductsModel) SelectById(ProductId int) *Product {
 }
 
 func (cpm *ProductsModel) Update(updatedData Product) *Product {
-	var qry = cpm.db.Table("products").Where("id = ?", updatedData.Id).Update("name", updatedData.Name)
+	var data map[string]interface{} = make(map[string]interface{})
+
+	if updatedData.Name != "" {
+		data["name"] = updatedData.Name
+	}
+	if updatedData.Description != "" {
+		data["description"] = updatedData.Description
+	}
+	if updatedData.Price != 0 {
+		data["price"] = updatedData.Price
+	}
+	if updatedData.Stock != 0 {
+		data["stock"] = updatedData.Stock
+	}
+	if updatedData.Image != "" {
+		data["image"] = updatedData.Image
+	}
+	if updatedData.AdminId != 0 {
+		data["admin_id"] = updatedData.AdminId
+	}
+	var qry = cpm.db.Table("products").Where("id = ?", updatedData.Id).Updates(data)
 	if err := qry.Error; err != nil {
 		logrus.Error("Model : update error, ", err.Error())
 		return nil

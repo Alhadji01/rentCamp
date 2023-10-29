@@ -17,7 +17,6 @@ func RouteProduct(e *echo.Echo, cpc controller.ProductControllerInterface, cfg c
 	var product = e.Group("/admins")
 	product.Use(helper.Middleware())
 	product.POST("/products", cpc.CreateProduct())
-	product.PUT("/:id", cpc.UpdateProduct())
 	product.PUT("/products/:id", cpc.UpdateProduct())
 	product.DELETE("/products/:id", cpc.DeleteProduct())
 
@@ -28,7 +27,7 @@ func RouteProduct(e *echo.Echo, cpc controller.ProductControllerInterface, cfg c
 }
 
 func RouteUser(e *echo.Echo, uc controller.UserControllerInterface, cfg config.Config) {
-	var user = e.Group("/users")
+	var user = e.Group("/customer")
 	user.POST("/login", uc.Login())
 	user.POST("", uc.CreateUser())
 	user.GET("", uc.GetAllUsers())
@@ -36,4 +35,15 @@ func RouteUser(e *echo.Echo, uc controller.UserControllerInterface, cfg config.C
 	user.PUT("/:id", uc.UpdateUser())
 	user.DELETE("/:id", uc.DeleteUser())
 	user.GET("/search", uc.SearchUsers())
+}
+
+func RouteCart(e *echo.Echo, cc controller.CartControllerInterface, cfg config.Config) {
+	var cart = e.Group("/carts")
+	cart.GET("/:cart_id", cc.GetCartByCartId())
+	cart.POST("/:cart_id/items", cc.AddItemToCart())
+	cart.PUT("/:cart_id/items/:item_id", cc.UpdateCartItem())
+	cart.DELETE("/:cart_id/items/:item_id", cc.RemoveCartItem())
+	cart.GET("/:cart_id/items", cc.GetItemsInCart())
+	cart.DELETE("/:cart_id/items", cc.RemoveAllItemsFromCart())
+	cart.GET("/:cart_id/total", cc.GetTotalCartPrice())
 }

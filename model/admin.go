@@ -8,12 +8,12 @@ import (
 )
 
 type Admin struct {
-	Id        int    `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
-	Username  string `gorm:"type:varchar(25);not null" json:"username" form:"username"`
-	Password  string `gorm:"type:varchar(25);not null" json:"password" form:"password"`
-	Role      string `gorm:"type:ENUM('admin');not null" json:"role" form:"role"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Id        int            `gorm:"primaryKey;type:smallint" json:"id" form:"id"`
+	Username  string         `gorm:"type:varchar(25);not null" json:"username" form:"username"`
+	Password  string         `gorm:"type:varchar(25);not null" json:"password" form:"password"`
+	Role      string         `gorm:"type:ENUM('admin');not null" json:"role" form:"role"`
+	CreatedAt time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"created_at" form:"created_at"`
+	UpdatedAt time.Time      `gorm:"type:timestamp DEFAULT CURRENT_TIMESTAMP" json:"updated_at" form:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 	Products  []Product      `json:"products"`
 }

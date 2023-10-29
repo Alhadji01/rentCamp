@@ -78,12 +78,7 @@ func (uc *UserController) Login() echo.HandlerFunc {
 		if res.Id == 0 {
 			return c.JSON(http.StatusNotFound, helper.FormatResponse("Data not found", nil))
 		}
-		errAuth := helper.VerifyPassword(res.Password, input.Password)
-		if !errAuth {
-			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Wrong password", nil))
-		}
-		var role = "admin"
-
+		var role = "user"
 		var jwtToken = helper.GenerateJWT(uc.config.Secret, uc.config.RefreshSecret, res.Id, res.Username, role)
 
 		if jwtToken == nil {

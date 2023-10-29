@@ -21,10 +21,12 @@ func main() {
 	adminModel := model.NewAdminsModel(db)
 	ProductModel := model.NewProductsModel(db)
 	userModel := model.NewUsersModel(db)
+	cartModel := model.NewCartModel(db)
 
 	adminController := controller.NewAdminControlInterface(adminModel)
 	ProductController := controller.NewProductControllerInterface(ProductModel)
 	userController := controller.NewUserControlInterface(userModel)
+	cartController := controller.NewCartControllerInterface(cartModel)
 
 	e.Pre(middleware.RemoveTrailingSlash())
 
@@ -37,6 +39,7 @@ func main() {
 	route.RouteAdmin(e, adminController, *config)
 	route.RouteProduct(e, ProductController, *config)
 	route.RouteUser(e, userController, *config)
+	route.RouteCart(e, cartController, *config)
 
 	e.Logger.Fatal(e.Start(fmt.Sprintf(":%d", config.ServerPort)).Error())
 }
