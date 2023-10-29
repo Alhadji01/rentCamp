@@ -6,6 +6,7 @@ import (
 	"rentcamp/helper"
 	"rentcamp/model"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 )
 
@@ -59,7 +60,7 @@ func (uc *AdminController) Login() echo.HandlerFunc {
 			return c.JSON(http.StatusNotFound, helper.FormatResponse("Data not found", nil))
 		}
 
-		var jwtToken = helper.GenerateJWT(uc.config.Secret, uc.config.RefreshSecret, res.Id, res.Username)
+		var jwtToken = helper.GenerateJWT(uc.config.Secret, uc.config.RefreshSecret, res.Id, res.Username, res.Role)
 
 		if jwtToken == nil {
 			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happend", nil))
@@ -67,10 +68,17 @@ func (uc *AdminController) Login() echo.HandlerFunc {
 
 		var info = map[string]any{}
 		info["username"] = res.Username
-		info["role"] = "admin"
+		info["role"] = res.Role
 
 		jwtToken["info"] = info
 
 		return c.JSON(http.StatusOK, helper.FormatResponse("login success", jwtToken))
 	}
+}
+
+func SomeSecureHandler(c echo.Context) error {
+	user := c.Get("user").(*jwt.Token)
+	claims := user.Claims.(jwt.MapClaims)
+	username := claims["username"].(string)
+	return c.String(http.StatusOK, "Welcome, "+username+"!")
 }
