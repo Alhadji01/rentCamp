@@ -27,7 +27,7 @@ jobs:
           context: .
           file: ./dockerfile
           push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/rentcamp:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/alhadji2023:latest
 
       - name: Connect SSH
         uses: appleboy/ssh-action@v0.1.9
