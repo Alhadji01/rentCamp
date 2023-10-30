@@ -9,20 +9,18 @@ import (
 )
 
 type Config struct {
-	ServerPort               int
-	DBPort                   int
-	DBHost                   string
-	DBUser                   string
-	DBPassword               string
-	DBName                   string
-	Secret                   string
-	RefreshSecret            string
-	CDN_Cloud_Name           string
-	CDN_API_Key              string
-	CDN_API_Secret           string
-	CDN_Folder_Name          string
-	MidtransSandBoxClientKey string
-	MidtransSandBoxServerKey string
+	ServerPort      int
+	DBPort          int
+	DBHost          string
+	DBUser          string
+	DBPassword      string
+	DBName          string
+	Secret          string
+	RefreshSecret   string
+	CDN_Cloud_Name  string
+	CDN_API_Key     string
+	CDN_API_Secret  string
+	CDN_Folder_Name string
 }
 
 func loadConfig() *Config {
@@ -86,12 +84,6 @@ func loadConfig() *Config {
 	}
 	if val, found := os.LookupEnv("CDN_Folder_Name"); found {
 		res.CDN_Folder_Name = val
-	}
-	if val, found := os.LookupEnv("MidtransSandBoxClientKey"); found {
-		res.MidtransSandBoxClientKey = val
-	}
-	if val, found := os.LookupEnv("MidtransSandBoxServerKey"); found {
-		res.MidtransSandBoxServerKey = val
 	}
 
 	return res

@@ -38,7 +38,7 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var input = model.Product{}
 		if err := c.Bind(&input); err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid category product input", nil))
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid product input", nil))
 		}
 		image, err := c.FormFile("image")
 		if err != nil {
@@ -73,7 +73,7 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happened", nil))
 		}
 
-		return c.JSON(http.StatusCreated, helper.FormatResponse("Success create category product", createdProduct))
+		return c.JSON(http.StatusCreated, helper.FormatResponse("Success create product", createdProduct))
 	}
 }
 
@@ -131,10 +131,10 @@ func (cpc *ProductController) GetProductById() echo.HandlerFunc {
 
 		var res = cpc.model.SelectById(cnv)
 		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get egory product by id, ", nil))
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get product by id, ", nil))
 		}
 
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success get egory product", res))
+		return c.JSON(http.StatusOK, helper.FormatResponse("Success get product", res))
 	}
 }
 
@@ -147,7 +147,7 @@ func (cpc *ProductController) UpdateProduct() echo.HandlerFunc {
 		}
 		var input = model.Product{}
 		if err := c.Bind(&input); err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid category product input", nil))
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("invalid product input", nil))
 		}
 		image, err := c.FormFile("image")
 		if err != nil {
@@ -204,9 +204,9 @@ func (cpc *ProductController) DeleteProduct() echo.HandlerFunc {
 
 		success := cpc.model.Delete(cnv)
 		if !success {
-			return c.JSON(http.StatusNotFound, helper.FormatResponse("egory product not found", nil))
+			return c.JSON(http.StatusNotFound, helper.FormatResponse("category product not found", nil))
 		}
 
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success delete egory product", nil))
+		return c.JSON(http.StatusOK, helper.FormatResponse("Success delete product", nil))
 	}
 }

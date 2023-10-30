@@ -50,7 +50,3 @@ func RouteCart(e *echo.Echo, cc controller.CartControllerInterface, cfg config.C
 	cart.DELETE("/:cart_id/items", cc.RemoveAllItemsFromCart())
 	cart.GET("/:cart_id/total", cc.GetTotalCartPrice())
 }
-func RoutePayment(e *echo.Echo, pc controller.PaymentControllerInterface, cfg config.Config) {
-	var payment = e.Group("/payment")
-	payment.POST("/create-invoice", pc.CreatePayment())
-}
