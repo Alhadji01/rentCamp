@@ -7,17 +7,11 @@ import (
 	"rentcamp/model"
 	route "rentcamp/routes"
 
-	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
-	var err = godotenv.Load(".ENV")
-	if err != nil {
-		logrus.Error("Config : Cannot load config file, ", err.Error())
-	}
 	e := echo.New()
 	var config = config.InitConfig()
 

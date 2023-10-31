@@ -20,5 +20,9 @@ func InitModel(config config.Config) *gorm.DB {
 }
 
 func Migrate(db *gorm.DB) {
-	db.AutoMigrate(&Admin{}, &Product{}, &User{}, &CartItem{}, &Cart{})
+	db.AutoMigrate(&Admin{})
+	db.AutoMigrate(&Product{})
+	db.AutoMigrate(&User{})
+	db.AutoMigrate(&CartItem{})
+	db.AutoMigrate(&Cart{})
 }
