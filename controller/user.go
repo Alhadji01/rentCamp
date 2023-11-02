@@ -8,6 +8,7 @@ import (
 	"rentcamp/model"
 	"strconv"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -19,7 +20,6 @@ type UserControllerInterface interface {
 	GetUserById() echo.HandlerFunc
 	UpdateUser() echo.HandlerFunc
 	DeleteUser() echo.HandlerFunc
-	SearchUsers() echo.HandlerFunc
 }
 
 type UserController struct {
@@ -85,6 +85,7 @@ func (uc *UserController) Login() echo.HandlerFunc {
 			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Cannot process data, something happend", nil))
 		}
 		var info = map[string]any{}
+		info["id"] = res.Id
 		info["name"] = res.Name
 		info["username"] = res.Username
 
@@ -96,13 +97,40 @@ func (uc *UserController) Login() echo.HandlerFunc {
 
 func (uc *UserController) GetAllUsers() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var res = uc.model.SelectAll()
+		pageStr := c.QueryParam("page")
+		limitStr := c.QueryParam("limit")
+		search := c.QueryParam("name")
 
-		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get all users, ", nil))
+		var page, limit int
+		if pageStr != "" {
+			page, _ = strconv.Atoi(pageStr)
+		}
+		if limitStr != "" {
+			limit, _ = strconv.Atoi(limitStr)
 		}
 
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success get all users, ", res))
+		if page == 0 || limit == 0 {
+			var res = uc.model.SelectAll()
+
+			if res == nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get all users, ", nil))
+			}
+
+			return c.JSON(http.StatusOK, helper.FormatResponse("Success get all users, ", res))
+		} else {
+			res, totalCount, err := uc.model.SelectAllWithPagination(page, limit, search)
+
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching products", nil))
+			}
+
+			response := map[string]interface{}{
+				"products":   res,
+				"total_data": totalCount,
+			}
+
+			return c.JSON(http.StatusOK, helper.FormatResponse("Success fetching products", response))
+		}
 	}
 }
 
@@ -124,43 +152,21 @@ func (uc *UserController) GetUserById() echo.HandlerFunc {
 	}
 }
 
-func (uc *UserController) SearchUsers() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		page := c.QueryParam("page")
-		limit := c.QueryParam("limit")
-		search := c.QueryParam("name")
-
-		pageNumber, err := strconv.Atoi(page)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid page parameter", nil))
-		}
-
-		limitNumber, err := strconv.Atoi(limit)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid limit parameter", nil))
-		}
-
-		res, totalCount, err := uc.model.SearchUsers(pageNumber, limitNumber, search)
-
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching products", nil))
-		}
-
-		response := map[string]interface{}{
-			"Users":      res,
-			"total_data": totalCount,
-		}
-
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success fetching products", response))
-	}
-}
-
 func (uc *UserController) UpdateUser() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var paramId = c.Param("id")
-		cnv, err := strconv.Atoi(paramId)
+		user := c.Get("user").(*jwt.Token)
+		claims := user.Claims.(jwt.MapClaims)
+		role := claims["role"].(string)
+		userID := int(claims["id"].(float64))
+
+		paramID := c.Param("id")
+		id, err := strconv.Atoi(paramID)
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid id", nil))
+		}
+
+		if role != "admin" && userID != id {
+			return c.JSON(http.StatusForbidden, helper.FormatResponse("Permission denied. You don't have the required permissions.", nil))
 		}
 
 		var input = model.User{}
@@ -168,7 +174,7 @@ func (uc *UserController) UpdateUser() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid user input", nil))
 		}
 
-		input.Id = cnv
+		input.Id = id
 		hashpwd, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 		if err != nil {
 			return errors.New("Gagal mengenkripsi kata sandi: " + err.Error())
@@ -186,6 +192,20 @@ func (uc *UserController) UpdateUser() echo.HandlerFunc {
 
 func (uc *UserController) DeleteUser() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		user := c.Get("user").(*jwt.Token)
+		claims := user.Claims.(jwt.MapClaims)
+		role := claims["role"].(string)
+		userID := int(claims["id"].(float64))
+
+		paramID := c.Param("id")
+		id, err := strconv.Atoi(paramID)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid id", nil))
+		}
+
+		if role != "admin" && userID != id {
+			return c.JSON(http.StatusForbidden, helper.FormatResponse("Permission denied. You don't have the required permissions.", nil))
+		}
 		var paramId = c.Param("id")
 
 		cnv, err := strconv.Atoi(paramId)

@@ -42,13 +42,14 @@ func (ProductResponse) TableName() string {
 }
 
 type CartModelInterface interface {
-	GetCartByCartId(cartID int) *Cart
+	GetCartByCartId(cartID int) (*Cart, error)
 	AddItemToCart(cartID int, newItem CartItem) *CartItem
 	UpdateCartItem(cartID, itemID int, updatedItem CartItem) *CartItem
 	RemoveCartItem(cartID, itemID int) bool
 	GetItemsInCart(cartID int) []CartItem
 	RemoveAllItemsFromCart(cartID int) bool
 	GetTotalCartPrice(cartID int) int
+	CreateCart(userID int) (*Cart, error)
 }
 
 type CartModel struct {
@@ -61,13 +62,26 @@ func NewCartModel(db *gorm.DB) CartModelInterface {
 	}
 }
 
-func (cm *CartModel) GetCartByCartId(cartID int) *Cart {
+func (cm *CartModel) CreateCart(userID int) (*Cart, error) {
+	newCart := Cart{
+		UserID: userID,
+	}
+
+	if err := cm.db.Create(&newCart).Error; err != nil {
+		logrus.Error("Cart Model: Error creating cart, ", err.Error())
+		return nil, err
+	}
+
+	return &newCart, nil
+}
+
+func (cm *CartModel) GetCartByCartId(cartID int) (*Cart, error) {
 	var cart = Cart{}
 	if err := cm.db.Preload("CartItem").Where("id = ?", cartID).First(&cart).Error; err != nil {
 		logrus.Error("Cart Model: Error fetching cart, ", err.Error())
-		return nil
+		return nil, err
 	}
-	return &cart
+	return &cart, nil
 }
 
 func (cm *CartModel) AddItemToCart(cartID int, newItem CartItem) *CartItem {

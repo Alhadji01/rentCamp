@@ -23,10 +23,10 @@ type Product struct {
 type ProductModelInterface interface {
 	InsertProduct(newProduct Product) *Product
 	SelectAll() []Product
+	SelectAllWithPagination(page, limit int, search string) ([]Product, int64, error)
 	SelectById(ProductId int) *Product
 	Update(updatedData Product) *Product
 	Delete(ProductId int) bool
-	SelectWithPagination(page int, limit int, search string) ([]Product, int, error)
 }
 
 type ProductsModel struct {
@@ -66,6 +66,55 @@ func (cpm *ProductsModel) SelectById(ProductId int) *Product {
 	}
 
 	return &data
+}
+
+func (cpm *ProductsModel) SelectAllWithPagination(page, limit int, search string) ([]Product, int64, error) {
+	var products []Product
+	var totalCount int64
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 10
+	}
+
+	if search != "" {
+		if err := cpm.db.Model(&Product{}).
+			Where("name LIKE ?", "%"+search+"%").
+			Count(&totalCount).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := cpm.db.Model(&Product{}).
+			Count(&totalCount).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if search != "" {
+		if err := cpm.db.Where("name LIKE ?", "%"+search+"%").
+			Offset(offset).
+			Limit(limit).
+			Find(&products).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := cpm.db.Offset(offset).
+			Limit(limit).
+			Find(&products).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return products, totalCount, nil
 }
 
 func (cpm *ProductsModel) Update(updatedData Product) *Product {
@@ -124,25 +173,4 @@ func (cpm *ProductsModel) Delete(ProductId int) bool {
 	}
 
 	return true
-}
-
-func (pm *ProductsModel) SelectWithPagination(page int, limit int, search string) ([]Product, int, error) {
-	var products []Product
-	var totalCount int64
-
-	if err := pm.db.Model(&Product{}).
-		Where("name LIKE ?", "%"+search+"%").
-		Count(&totalCount).Error; err != nil {
-		return nil, 0, err
-	}
-	totalCountInt := int(totalCount)
-
-	if err := pm.db.Where("name LIKE ?", "%"+search+"%").
-		Offset((page - 1) * limit).
-		Limit(limit).
-		Find(&products).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return products, totalCountInt, nil
 }

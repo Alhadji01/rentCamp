@@ -10,6 +10,7 @@ import (
 
 	"github.com/cloudinary/cloudinary-go"
 	"github.com/cloudinary/cloudinary-go/api/uploader"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
@@ -19,7 +20,6 @@ type ProductControllerInterface interface {
 	GetProductById() echo.HandlerFunc
 	UpdateProduct() echo.HandlerFunc
 	DeleteProduct() echo.HandlerFunc
-	SearchProduct() echo.HandlerFunc
 }
 
 type ProductController struct {
@@ -34,16 +34,32 @@ func NewProductControllerInterface(m model.ProductModelInterface, cfg config.Con
 	}
 }
 
+// Revisi: Authorization admin only
 func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		userToken := c.Get("user").(*jwt.Token)
+		tokenData, ok := helper.ExtractToken(userToken).(map[string]interface{})
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Invalid Token", "Invalid or missing token"))
+		}
+		role, roleOk := tokenData["role"].(string)
+		if !roleOk {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Role information missing in the token", nil))
+		}
+		if role != "admin" {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("You don't have permission", nil))
+		}
+
 		var input = model.Product{}
 		if err := c.Bind(&input); err != nil {
 			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid product input", nil))
 		}
+
 		image, err := c.FormFile("image")
 		if err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Image upload is required", nil))
+			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Error uploading image", nil))
 		}
+
 		cld, err := cloudinary.NewFromParams(
 			cpc.config.CDN_Cloud_Name,
 			cpc.config.CDN_API_Key,
@@ -52,6 +68,7 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to initialize Cloudinary", nil))
 		}
+
 		uploadParams := uploader.UploadParams{
 			Folder: cpc.config.CDN_Folder_Name,
 		}
@@ -64,8 +81,9 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 
 		result, err := cld.Upload.Upload(context.TODO(), fileReader, uploadParams)
 		if err != nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to upload image to Cloudinary", nil))
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Failed to upload image to Cloudinary: "+err.Error(), nil))
 		}
+
 		input.Image = result.SecureURL
 
 		createdProduct := cpc.model.InsertProduct(input)
@@ -77,46 +95,43 @@ func (cpc *ProductController) CreateProduct() echo.HandlerFunc {
 	}
 }
 
+// Revisi: Penggabungan getall dengan search pagination
 func (cpc *ProductController) GetAllProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
-		var res = cpc.model.SelectAll()
-
-		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get all users, ", nil))
-		}
-
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success get all users, ", res))
-	}
-}
-
-func (cpc *ProductController) SearchProduct() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		page := c.QueryParam("page")
-		limit := c.QueryParam("limit")
+		pageStr := c.QueryParam("page")
+		limitStr := c.QueryParam("limit")
 		search := c.QueryParam("name")
 
-		pageNumber, err := strconv.Atoi(page)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid page parameter", nil))
+		var page, limit int
+		if pageStr != "" {
+			page, _ = strconv.Atoi(pageStr)
+		}
+		if limitStr != "" {
+			limit, _ = strconv.Atoi(limitStr)
 		}
 
-		limitNumber, err := strconv.Atoi(limit)
-		if err != nil {
-			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid limit parameter", nil))
+		if page == 0 || limit == 0 {
+			var res = cpc.model.SelectAll()
+
+			if res == nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error get all users, ", nil))
+			}
+
+			return c.JSON(http.StatusOK, helper.FormatResponse("Success get all users, ", res))
+		} else {
+			res, totalCount, err := cpc.model.SelectAllWithPagination(page, limit, search)
+
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching products", nil))
+			}
+
+			response := map[string]interface{}{
+				"products":   res,
+				"total_data": totalCount,
+			}
+
+			return c.JSON(http.StatusOK, helper.FormatResponse("Success fetching products", response))
 		}
-
-		res, totalCount, err := cpc.model.SelectWithPagination(pageNumber, limitNumber, search)
-
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching products", nil))
-		}
-
-		response := map[string]interface{}{
-			"products":   res,
-			"total_data": totalCount,
-		}
-
-		return c.JSON(http.StatusOK, helper.FormatResponse("Success fetching products", response))
 	}
 }
 
@@ -138,8 +153,22 @@ func (cpc *ProductController) GetProductById() echo.HandlerFunc {
 	}
 }
 
+// Revisi: Authorization admin only
 func (cpc *ProductController) UpdateProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		userToken := c.Get("user").(*jwt.Token)
+		tokenData, ok := helper.ExtractToken(userToken).(map[string]interface{})
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Invalid Token", "Invalid or missing token"))
+		}
+		role, roleOk := tokenData["role"].(string)
+		if !roleOk {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Role information missing in the token", nil))
+		}
+		if role != "admin" {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("You don't have permission", nil))
+		}
+
 		var paramId = c.Param("id")
 		cnv, err := strconv.Atoi(paramId)
 		if err != nil {
@@ -193,8 +222,21 @@ func (cpc *ProductController) UpdateProduct() echo.HandlerFunc {
 	}
 }
 
+// Revisi: Authorization admin only
 func (cpc *ProductController) DeleteProduct() echo.HandlerFunc {
 	return func(c echo.Context) error {
+		userToken := c.Get("user").(*jwt.Token)
+		tokenData, ok := helper.ExtractToken(userToken).(map[string]interface{})
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Invalid Token", "Invalid or missing token"))
+		}
+		role, roleOk := tokenData["role"].(string)
+		if !roleOk {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Role information missing in the token", nil))
+		}
+		if role != "admin" {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("You don't have permission", nil))
+		}
 		var paramId = c.Param("id")
 
 		cnv, err := strconv.Atoi(paramId)

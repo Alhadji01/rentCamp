@@ -6,6 +6,7 @@ import (
 	"rentcamp/model"
 	"strconv"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/labstack/echo/v4"
 )
 
@@ -17,6 +18,7 @@ type CartControllerInterface interface {
 	GetItemsInCart() echo.HandlerFunc
 	RemoveAllItemsFromCart() echo.HandlerFunc
 	GetTotalCartPrice() echo.HandlerFunc
+	CreateCart() echo.HandlerFunc
 }
 
 type CartController struct {
@@ -29,6 +31,31 @@ func NewCartControllerInterface(m model.CartModelInterface) CartControllerInterf
 	}
 }
 
+// revisi : update authorization
+func (cc *CartController) CreateCart() echo.HandlerFunc {
+	return func(c echo.Context) error {
+		user := c.Get("user")
+		if user == nil {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Unauthorized 1", nil))
+		}
+		claims, ok := user.(*jwt.Token).Claims.(jwt.MapClaims)
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Unauthorized 2", nil))
+		}
+		userID, ok := claims["id"].(float64)
+		if !ok {
+			return c.JSON(http.StatusUnauthorized, helper.FormatResponse("Unauthorized 3", nil))
+		}
+
+		newCart, err := cc.model.CreateCart(int(userID))
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error creating cart", nil))
+		}
+
+		return c.JSON(http.StatusCreated, helper.FormatResponse("Cart created successfully", newCart))
+	}
+}
+
 func (cc *CartController) GetCartByCartId() echo.HandlerFunc {
 	return func(c echo.Context) error {
 		var paramCartID = c.Param("cart_id")
@@ -38,9 +65,13 @@ func (cc *CartController) GetCartByCartId() echo.HandlerFunc {
 			return c.JSON(http.StatusBadRequest, helper.FormatResponse("Invalid cart ID", nil))
 		}
 
-		var res = cc.model.GetCartByCartId(cartID)
+		res, err := cc.model.GetCartByCartId(cartID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching cart", err))
+		}
+
 		if res == nil {
-			return c.JSON(http.StatusInternalServerError, helper.FormatResponse("Error fetching cart", nil))
+			return c.JSON(http.StatusNotFound, helper.FormatResponse("Cart not found", nil))
 		}
 
 		return c.JSON(http.StatusOK, helper.FormatResponse("Cart retrieved successfully", res))

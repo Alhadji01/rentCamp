@@ -22,7 +22,6 @@ func RouteProduct(e *echo.Echo, cpc controller.ProductControllerInterface, cfg c
 
 	var admin = e.Group("/products")
 	admin.GET("", cpc.GetAllProduct())
-	admin.GET("/search", cpc.SearchProduct())
 	admin.GET("/:id", cpc.GetProductById())
 }
 
@@ -36,12 +35,13 @@ func RouteUser(e *echo.Echo, uc controller.UserControllerInterface, cfg config.C
 	var customer = e.Group("/customer")
 	customer.POST("/login", uc.Login())
 	customer.GET("", uc.GetAllUsers())
-	customer.GET("/search", uc.SearchUsers())
 	customer.POST("", uc.CreateUser())
 }
 
 func RouteCart(e *echo.Echo, cc controller.CartControllerInterface, cfg config.Config) {
 	var cart = e.Group("/carts")
+	cart.Use(helper.Middleware())
+	cart.POST("/:user_id", cc.CreateCart())
 	cart.GET("/:cart_id", cc.GetCartByCartId())
 	cart.POST("/:cart_id/items", cc.AddItemToCart())
 	cart.PUT("/:cart_id/items/:item_id", cc.UpdateCartItem())

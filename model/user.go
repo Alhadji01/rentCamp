@@ -29,23 +29,20 @@ type LoginUser struct {
 	Password string `json:"password" form:"password"`
 }
 
-// Declaration Contract
 type UserModelInterface interface {
 	Login(username string, password string) *User
 	InsertUser(newItem User) *User
 	SelectAll() []User
+	SelectAllWithPagination(page, limit int, search string) ([]User, int64, error)
 	SelectById(userId int) *User
 	Update(updatedData User) (*User, error)
 	Delete(userId int) bool
-	SearchUsers(page int, limit int, keyword string) ([]User, int, error)
 }
 
-// Interaction with db
 type UsersModel struct {
 	db *gorm.DB
 }
 
-// New Instance from UsersModel
 func NewUsersModel(db *gorm.DB) UserModelInterface {
 	return &UsersModel{
 		db: db,
@@ -85,35 +82,63 @@ func (um *UsersModel) SelectAll() []User {
 	return data
 }
 
+func (um *UsersModel) SelectAllWithPagination(page, limit int, search string) ([]User, int64, error) {
+	var Users []User
+	var totalCount int64
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 10
+	}
+
+	if search != "" {
+		if err := um.db.Model(&User{}).
+			Where("name LIKE ?", "%"+search+"%").
+			Count(&totalCount).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := um.db.Model(&User{}).
+			Count(&totalCount).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	offset := (page - 1) * limit
+
+	if offset < 0 {
+		offset = 0
+	}
+
+	if search != "" {
+		if err := um.db.Where("name LIKE ?", "%"+search+"%").
+			Offset(offset).
+			Limit(limit).
+			Find(&Users).Error; err != nil {
+			return nil, 0, err
+		}
+	} else {
+		if err := um.db.Offset(offset).
+			Limit(limit).
+			Find(&Users).Error; err != nil {
+			return nil, 0, err
+		}
+	}
+
+	return Users, totalCount, nil
+}
+
 func (um *UsersModel) SelectById(userId int) *User {
 	var data = User{}
-	if err := um.db.Where("id = ?", userId).First(&data).Error; err != nil {
+	if err := um.db.Preload("cartz").Where("id = ?", userId).First(&data).Error; err != nil {
 		logrus.Error("Model : Data with that ID was not found, ", err.Error())
 		return nil
 	}
 
 	return &data
-}
-
-func (um *UsersModel) SearchUsers(page int, limit int, search string) ([]User, int, error) {
-	var users []User
-	var totalCount int64
-
-	if err := um.db.Model(&User{}).
-		Where("name LIKE ?", "%"+search+"%").
-		Count(&totalCount).Error; err != nil {
-		return nil, 0, err
-	}
-	totalCountInt := int(totalCount)
-
-	if err := um.db.Where("name LIKE ?", "%"+search+"%").
-		Offset((page - 1) * limit).
-		Limit(limit).
-		Find(&users).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return users, totalCountInt, nil
 }
 
 func (um *UsersModel) Update(updatedData User) (*User, error) {
